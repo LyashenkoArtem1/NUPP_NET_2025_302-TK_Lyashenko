@@ -1,0 +1,85 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+class Program
+{
+    class Bus
+    {
+        public Guid Id { get; set; }
+        public string Model { get; set; }
+        public int Capacity { get; set; }
+        public string DriverName { get; set; }
+    }
+
+    static void Main()
+    {
+        List<Bus> buses = new List<Bus>();
+
+        Console.WriteLine("=== Створення і додавання автобусів ===");
+        var bus1 = new Bus { Id = Guid.NewGuid(), Model = "Mercedes", Capacity = 50, DriverName = "Іван Іванов" };
+        var bus2 = new Bus { Id = Guid.NewGuid(), Model = "Volvo", Capacity = 45, DriverName = "Петро Петренко" };
+        var bus3 = new Bus { Id = Guid.NewGuid(), Model = "MAN", Capacity = 60, DriverName = "Олег Олегов" };
+
+        buses.Add(bus1);
+        buses.Add(bus2);
+        buses.Add(bus3);
+
+        Console.WriteLine($"Додано автобус: {bus1.Id} - {bus1.Model}, місткість: {bus1.Capacity}, водій: {bus1.DriverName}");
+        Console.WriteLine($"Додано автобус: {bus2.Id} - {bus2.Model}, місткість: {bus2.Capacity}, водій: {bus2.DriverName}");
+        Console.WriteLine($"Додано автобус: {bus3.Id} - {bus3.Model}, місткість: {bus3.Capacity}, водій: {bus3.DriverName}");
+
+        Console.WriteLine("\n=== Вивід усіх автобусів ===");
+        foreach (var bus in buses)
+        {
+            Console.WriteLine($"Автобус ID: {bus.Id}");
+            Console.WriteLine($"  Модель: {bus.Model}");
+            Console.WriteLine($"  Місткість: {bus.Capacity}");
+            Console.WriteLine($"  Водій: {bus.DriverName}");
+            Console.WriteLine(new string('-', 30));
+        }
+
+        Console.WriteLine("\n=== Оновлення інформації про другий автобус ===");
+        var busToUpdate = buses.FirstOrDefault(b => b.Model == "Volvo");
+        if (busToUpdate != null)
+        {
+            Console.WriteLine($"Старі дані: Місткість = {busToUpdate.Capacity}, Водій = {busToUpdate.DriverName}");
+            busToUpdate.Capacity = 48;
+            busToUpdate.DriverName = "Олександр Олександров";
+            Console.WriteLine($"Нові дані: Місткість = {busToUpdate.Capacity}, Водій = {busToUpdate.DriverName}");
+        }
+
+        Console.WriteLine("\n=== Видалення першого автобуса ===");
+        if (buses.Remove(bus1))
+            Console.WriteLine($"Автобус {bus1.Id} було успішно видалено.");
+        else
+            Console.WriteLine($"Не вдалося видалити автобус {bus1.Id}.");
+
+        Console.WriteLine("\n=== Автобуси після видалення ===");
+        if (buses.Count == 0)
+            Console.WriteLine("Автобусів немає.");
+        else
+        {
+            foreach (var bus in buses)
+            {
+                Console.WriteLine($"Автобус ID: {bus.Id}");
+                Console.WriteLine($"  Модель: {bus.Model}");
+                Console.WriteLine($"  Місткість: {bus.Capacity}");
+                Console.WriteLine($"  Водій: {bus.DriverName}");
+                Console.WriteLine(new string('-', 30));
+            }
+        }
+
+        Console.WriteLine("\n=== Пошук автобуса з місткістю більше 50 ===");
+        var largeBuses = buses.Where(b => b.Capacity > 50).ToList();
+        if (largeBuses.Count == 0)
+            Console.WriteLine("Автобусів з місткістю більше 50 не знайдено.");
+        else
+        {
+            foreach (var bus in largeBuses)
+                Console.WriteLine($"Автобус {bus.Model} з місткістю {bus.Capacity}");
+        }
+
+        Console.WriteLine("\n=== Завершення програми ===");
+    }
+}
