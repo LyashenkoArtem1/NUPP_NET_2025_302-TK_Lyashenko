@@ -1,0 +1,111 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
+public class BusModel
+{
+    public int Id { get; set; }
+    public string LicensePlate { get; set; } = string.Empty;
+    public string Model { get; set; } = string.Empty;
+    public string Manufacturer { get; set; } = string.Empty;
+    public int YearOfManufacture { get; set; }
+    public List<TripModel> Trips { get; set; } = new();
+}
+
+public class TripModel
+{
+    public int Id { get; set; }
+    public string Destination { get; set; } = string.Empty;
+    public DateTime DepartureTime { get; set; }
+    public double DistanceKm { get; set; }
+    public string DriverName { get; set; } = string.Empty;
+}
+
+class Program
+{
+    static async Task Main()
+    {
+        var buses = new List<BusModel>
+        {
+            new BusModel
+            {
+                Id = 1,
+                LicensePlate = "AB1234CD",
+                Model = "Volvo 7900",
+                Manufacturer = "Volvo Group",
+                YearOfManufacture = 2015,
+                Trips = new List<TripModel>
+                {
+                    new TripModel
+                    {
+                        Id = 1,
+                        Destination = "Kyiv",
+                        DepartureTime = new DateTime(2025, 5, 26, 8, 30, 0),
+                        DistanceKm = 450.5,
+                        DriverName = "Ivan Ivanov"
+                    },
+                    new TripModel
+                    {
+                        Id = 2,
+                        Destination = "Lviv",
+                        DepartureTime = new DateTime(2025, 5, 26, 13, 45, 0),
+                        DistanceKm = 540.2,
+                        DriverName = "Petro Petrenko"
+                    }
+                }
+            },
+            new BusModel
+            {
+                Id = 2,
+                LicensePlate = "XY9876ZT",
+                Model = "Mercedes Citaro",
+                Manufacturer = "Daimler AG",
+                YearOfManufacture = 2018,
+                Trips = new List<TripModel>
+                {
+                    new TripModel
+                    {
+                        Id = 3,
+                        Destination = "Odesa",
+                        DepartureTime = new DateTime(2025, 5, 27, 9, 0, 0),
+                        DistanceKm = 475.0,
+                        DriverName = "Olena Kovalenko"
+                    }
+                }
+            }
+        };
+
+        Console.WriteLine("=== Повний звіт по автобусах та поїздках ===\n");
+
+        foreach (var bus in buses)
+        {
+            Console.WriteLine($"Автобус ID: {bus.Id}");
+            Console.WriteLine($"  Номерний знак: {bus.LicensePlate}");
+            Console.WriteLine($"  Модель: {bus.Model}");
+            Console.WriteLine($"  Виробник: {bus.Manufacturer}");
+            Console.WriteLine($"  Рік випуску: {bus.YearOfManufacture}");
+            Console.WriteLine("  Поїздки:");
+
+            if (bus.Trips.Count == 0)
+            {
+                Console.WriteLine("    Поїздок немає");
+            }
+            else
+            {
+                foreach (var trip in bus.Trips)
+                {
+                    Console.WriteLine($"    Поїздка ID: {trip.Id}");
+                    Console.WriteLine($"      Напрямок: {trip.Destination}");
+                    Console.WriteLine($"      Час відправлення: {trip.DepartureTime:dd.MM.yyyy HH:mm}");
+                    Console.WriteLine($"      Відстань (км): {trip.DistanceKm:F1}");
+                    Console.WriteLine($"      Водій: {trip.DriverName}");
+                    Console.WriteLine();
+                }
+            }
+
+            Console.WriteLine(new string('-', 50));
+        }
+
+        await Task.Delay(0);
+    }
+}
