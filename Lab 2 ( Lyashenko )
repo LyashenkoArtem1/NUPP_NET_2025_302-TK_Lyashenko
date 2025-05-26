@@ -1,0 +1,161 @@
+using System;
+using System.Collections;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+
+// ==== Інтерфейс ====
+public interface ICrudServiceAsync<T> : IEnumerable<T>
+{
+    Task<bool> CreateAsync(T element);
+    Task<T> ReadAsync(Guid id);
+    Task<IEnumerable<T>> ReadAllAsync();
+    Task<IEnumerable<T>> ReadAllAsync(int page, int amount);
+    Task<bool> UpdateAsync(T element);
+    Task<bool> RemoveAsync(T element);
+    Task<bool> SaveAsync();
+}
+
+// ==== Клас Bus ====
+public class Bus
+{
+    public Guid Id { get; set; }
+    public int Capacity { get; set; }
+    public double FuelConsumption { get; set; }
+    public string Route { get; set; }
+
+    // Статичний метод генерації
+    public static Bus CreateNew()
+    {
+        Random rnd = new Random(Guid.NewGuid().GetHashCode());
+        return new Bus
+        {
+            Id = Guid.NewGuid(),
+            Capacity = rnd.Next(20, 100),
+            FuelConsumption = Math.Round(rnd.NextDouble() * 30 + 5, 2),
+            Route = $"Route {rnd.Next(1, 50)}"
+        };
+    }
+}
+
+// ==== Сервіс ====
+public class AsyncCrudService<T> : ICrudServiceAsync<T> where T : class
+{
+    private readonly ConcurrentDictionary<Guid, T> _data = new();
+    private readonly Func<T, Guid> _getId;
+    private readonly string _filePath;
+    private readonly object _lock = new();
+    private readonly SemaphoreSlim _semaphore = new(1, 1);
+    private readonly AutoResetEvent _saveEvent = new(false);
+
+    public AsyncCrudService(Func<T, Guid> getId, string filePath)
+    {
+        _getId = getId;
+        _filePath = filePath;
+    }
+
+    public async Task<bool> CreateAsync(T element)
+    {
+        var id = _getId(element);
+        bool added = _data.TryAdd(id, element);
+        return await Task.FromResult(added);
+    }
+
+    public async Task<T> ReadAsync(Guid id)
+    {
+        _data.TryGetValue(id, out T value);
+        return await Task.FromResult(value);
+    }
+
+    public async Task<IEnumerable<T>> ReadAllAsync()
+    {
+        return await Task.FromResult(_data.Values);
+    }
+
+    public async Task<IEnumerable<T>> ReadAllAsync(int page, int amount)
+    {
+        return await Task.FromResult(_data.Values.Skip((page - 1) * amount).Take(amount));
+    }
+
+    public async Task<bool> UpdateAsync(T element)
+    {
+        var id = _getId(element);
+        _data[id] = element;
+        return await Task.FromResult(true);
+    }
+
+    public async Task<bool> RemoveAsync(T element)
+    {
+        var id = _getId(element);
+        return await Task.FromResult(_data.TryRemove(id, out _));
+    }
+
+    public async Task<bool> SaveAsync()
+    {
+        await _semaphore.WaitAsync();
+        try
+        {
+            lock (_lock)
+            {
+                string json = JsonSerializer.Serialize(_data.Values, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(_filePath, json);
+            }
+            _saveEvent.Set(); // Сигнал для інших потоків
+            return true;
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+    public IEnumerator<T> GetEnumerator() => _data.Values.GetEnumerator();
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+}
+
+// ==== Програма ====
+class Program
+{
+    static async Task Main()
+    {
+        string filePath = "buses.json";
+        var service = new AsyncCrudService<Bus>(b => b.Id, filePath);
+
+        int count = 1000;
+
+        // Паралельне створення
+        Parallel.For(0, count, async i =>
+        {
+            var bus = Bus.CreateNew();
+            await service.CreateAsync(bus);
+        });
+
+        // Зачекаємо на завершення паралельних створень
+        await Task.Delay(2000);
+
+        await service.SaveAsync();
+
+        var allBuses = (await service.ReadAllAsync()).ToList();
+
+        var minCapacity = allBuses.Min(b => b.Capacity);
+        var maxCapacity = allBuses.Max(b => b.Capacity);
+        var avgCapacity = allBuses.Average(b => b.Capacity);
+
+        var minFuel = allBuses.Min(b => b.FuelConsumption);
+        var maxFuel = allBuses.Max(b => b.FuelConsumption);
+        var avgFuel = allBuses.Average(b => b.FuelConsumption);
+
+        Console.WriteLine($"🚌 Total buses: {allBuses.Count}");
+        Console.WriteLine($"👥 Capacity: Min = {minCapacity}, Max = {maxCapacity}, Avg = {avgCapacity:F2}");
+        Console.WriteLine($"⛽ Fuel: Min = {minFuel}, Max = {maxFuel}, Avg = {avgFuel:F2}");
+
+        var page = await service.ReadAllAsync(2, 5);
+        Console.WriteLine("\n📄 Page 2, 5 buses:");
+        foreach (var b in page)
+            Console.WriteLine($"ID: {b.Id}, Capacity: {b.Capacity}, Fuel: {b.FuelConsumption}, Route: {b.Route}");
+    }
+}
