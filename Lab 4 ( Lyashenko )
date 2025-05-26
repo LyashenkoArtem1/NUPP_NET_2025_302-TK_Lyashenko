@@ -1,0 +1,117 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+// Модель
+public class BusModel
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string LicensePlate { get; set; } = "";
+    public string Model { get; set; } = "";
+    public int Year { get; set; }
+}
+
+// CRUD сервіс в пам'яті
+public interface ICrudServiceAsync<T>
+{
+    Task<bool> CreateAsync(T element);
+    Task<T?> ReadAsync(Guid id);
+    Task<IEnumerable<T>> ReadAllAsync();
+    Task<bool> UpdateAsync(T element);
+    Task<bool> RemoveAsync(T element);
+}
+
+public class CrudServiceAsync<T> : ICrudServiceAsync<T> where T : BusModel
+{
+    private readonly List<T> _items = new List<T>();
+
+    public Task<bool> CreateAsync(T element)
+    {
+        _items.Add(element);
+        return Task.FromResult(true);
+    }
+
+    public Task<T?> ReadAsync(Guid id)
+    {
+        var item = _items.FirstOrDefault(x => x.Id == id);
+        return Task.FromResult(item);
+    }
+
+    public Task<IEnumerable<T>> ReadAllAsync()
+    {
+        return Task.FromResult<IEnumerable<T>>(_items);
+    }
+
+    public Task<bool> UpdateAsync(T element)
+    {
+        var index = _items.FindIndex(x => x.Id == element.Id);
+        if (index == -1) return Task.FromResult(false);
+        _items[index] = element;
+        return Task.FromResult(true);
+    }
+
+    public Task<bool> RemoveAsync(T element)
+    {
+        var removed = _items.Remove(element);
+        return Task.FromResult(removed);
+    }
+}
+
+// Головний клас і метод з детальним виводом
+class Program
+{
+    static async Task Main()
+    {
+        var service = new CrudServiceAsync<BusModel>();
+
+        Console.WriteLine("=== Початок роботи з сервісом BusModel ===\n");
+
+        // Створення
+        var bus1 = new BusModel { LicensePlate = "AA1234BB", Model = "Volvo", Year = 2010 };
+        var bus2 = new BusModel { LicensePlate = "CC5678DD", Model = "Scania", Year = 2012 };
+        var bus3 = new BusModel { LicensePlate = "EE9012FF", Model = "MAN", Year = 2015 };
+
+        Console.WriteLine("Створюємо три екземпляри BusModel...");
+        await service.CreateAsync(bus1);
+        Console.WriteLine($"Додано: {bus1.LicensePlate} | {bus1.Model} | {bus1.Year}");
+        await service.CreateAsync(bus2);
+        Console.WriteLine($"Додано: {bus2.LicensePlate} | {bus2.Model} | {bus2.Year}");
+        await service.CreateAsync(bus3);
+        Console.WriteLine($"Додано: {bus3.LicensePlate} | {bus3.Model} | {bus3.Year}");
+
+        Console.WriteLine("\n=== Всі автобуси в сервісі після додавання: ===");
+        var allBuses = await service.ReadAllAsync();
+        foreach (var b in allBuses)
+            Console.WriteLine($"  ID: {b.Id}\n  Номер: {b.LicensePlate}\n  Модель: {b.Model}\n  Рік випуску: {b.Year}\n");
+
+        // Оновлення
+        Console.WriteLine("Оновлюємо модель і рік першого автобуса...");
+        bus1.Model = "Mercedes-Benz";
+        bus1.Year = 2018;
+        bool updateResult = await service.UpdateAsync(bus1);
+        Console.WriteLine(updateResult ? "Оновлення успішне.\n" : "Помилка при оновленні.\n");
+
+        // Читання одного об'єкта
+        Console.WriteLine("Читаємо автобус по ID першого автобуса:");
+        var readBus = await service.ReadAsync(bus1.Id);
+        if (readBus != null)
+            Console.WriteLine($"Знайдено автобус:\n  ID: {readBus.Id}\n  Номер: {readBus.LicensePlate}\n  Модель: {readBus.Model}\n  Рік випуску: {readBus.Year}\n");
+        else
+            Console.WriteLine("Автобус не знайдено.\n");
+
+        // Видалення
+        Console.WriteLine($"Видаляємо автобус з номером {bus2.LicensePlate}...");
+        bool deleteResult = await service.RemoveAsync(bus2);
+        Console.WriteLine(deleteResult ? "Видалення успішне.\n" : "Помилка при видаленні.\n");
+
+        Console.WriteLine("=== Автобуси після видалення: ===");
+        allBuses = await service.ReadAllAsync();
+        foreach (var b in allBuses)
+            Console.WriteLine($"  ID: {b.Id}\n  Номер: {b.LicensePlate}\n  Модель: {b.Model}\n  Рік випуску: {b.Year}\n");
+
+        Console.WriteLine($"Кількість автобусів зараз: {allBuses.Count()}");
+
+        Console.WriteLine("\n=== Кінець роботи з сервісом BusModel ===");
+    }
+}
