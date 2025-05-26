@@ -1,0 +1,172 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+// Простір імен: Library.Common
+namespace Library.Common
+{
+    // Делегат
+    public delegate void BookEventHandler(Book book);
+
+    // Базовий клас
+    public class Item
+    {
+        public Guid Id { get; set; }
+        public string Title { get; set; }
+        public int Year { get; set; }
+
+        // конструктор
+        public Item()
+        {
+            Id = Guid.NewGuid();
+        }
+
+        // метод
+        public virtual void Display()
+        {
+            Console.WriteLine($"Item: {Title} ({Year})");
+        }
+    }
+
+    // Наслідування
+    public class Book : Item
+    {
+        public string Author { get; set; }
+
+        // подія
+        public static event BookEventHandler? OnBookCreated;
+
+        // статичне поле
+        public static int BookCount;
+
+        // статичний конструктор
+        static Book()
+        {
+            BookCount = 0;
+        }
+
+        // конструктор
+        public Book(string title, string author, int year)
+        {
+            Title = title;
+            Author = author;
+            Year = year;
+            BookCount++;
+            OnBookCreated?.Invoke(this);
+        }
+
+        public override void Display()
+        {
+            Console.WriteLine($"📘 Book: \"{Title}\" by {Author} ({Year})");
+        }
+    }
+
+    // Наслідування
+    public class Magazine : Item
+    {
+        public int IssueNumber { get; set; }
+
+        // конструктор
+        public Magazine(string title, int year, int issue)
+        {
+            Title = title;
+            Year = year;
+            IssueNumber = issue;
+        }
+
+        public override void Display()
+        {
+            Console.WriteLine($"📖 Magazine: \"{Title}\" Issue #{IssueNumber} ({Year})");
+        }
+    }
+
+    // Статичний клас з методом розширення
+    public static class ItemExtensions
+    {
+        // метод розширення
+        public static string GetAgeDescription(this Item item)
+        {
+            int age = DateTime.Now.Year - item.Year;
+            return age > 0 ? $"{age} years old" : "New!";
+        }
+    }
+
+    // Інтерфейс CRUD
+    public interface ICrudService<T>
+    {
+        void Create(T element);
+        T Read(Guid id);
+        IEnumerable<T> ReadAll();
+        void Update(T element);
+        void Remove(T element);
+    }
+
+    // Реалізація CRUD-сервісу
+    public class CrudService<T> : ICrudService<T> where T : Item
+    {
+        private readonly List<T> _items = new();
+
+        public void Create(T element)
+        {
+            _items.Add(element);
+        }
+
+        public T Read(Guid id)
+        {
+            return _items.FirstOrDefault(e => e.Id == id)!;
+        }
+
+        public IEnumerable<T> ReadAll()
+        {
+            return _items;
+        }
+
+        public void Update(T element)
+        {
+            var index = _items.FindIndex(e => e.Id == element.Id);
+            if (index != -1)
+                _items[index] = element;
+        }
+
+        public void Remove(T element)
+        {
+            _items.Remove(element);
+        }
+    }
+}
+
+// Простір імен: Library.Console
+namespace Library.ConsoleApp
+{
+    using Library.Common;
+
+    class Program
+    {
+        static void Main()
+        {
+            // підписка на подію
+            Book.OnBookCreated += book => System.Console.WriteLine($"[Подія] Нова книга додана: \"{book.Title}\"");
+
+            // Створення сервісу
+            var bookService = new CrudService<Item>();
+
+            // Додавання об'єктів
+            var b1 = new Book("1984", "George Orwell", 1949);
+            var b2 = new Book("The Hobbit", "J.R.R. Tolkien", 1937);
+            var m1 = new Magazine("National Geographic", 2023, 7);
+
+            bookService.Create(b1);
+            bookService.Create(b2);
+            bookService.Create(m1);
+
+            System.Console.WriteLine("\n--- Усі матеріали бібліотеки ---");
+            foreach (var item in bookService.ReadAll())
+            {
+                item.Display();
+                System.Console.WriteLine($"📅 Age: {item.GetAgeDescription()}\n");
+            }
+
+            System.Console.WriteLine($"📚 Всього книг: {Book.BookCount}");
+        }
+    }
+}
